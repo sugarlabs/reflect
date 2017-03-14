@@ -360,6 +360,10 @@ class ReflectActivity(activity.Activity):
         self._fixed.move(
             self._overlay_window, 0, Gdk.Screen.height())
 
+    def collapse_overlay_area(self, button, event):
+        self._fixed.move(
+            self._overlay_window, 0, Gdk.Screen.height())  
+
     def _resize_hide_cb(self, widget):
         self._resize_canvas(widget, True)
 

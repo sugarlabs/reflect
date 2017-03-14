@@ -706,9 +706,14 @@ class ReflectionGrid(Gtk.EventBox):
             self._reflection.activity.load_overlay_area(grid)
             grid.show()
 
+            collapse_button = EventIcon(icon_name='delete', pixel_size=BUTTON_SIZE)
+            collapse_button.set_tooltip(_('Collapse'))
+            collapse_button.connect('button-press-event', self._reflection.activity.collapse_overlay_area)
+            grid.attach(collapse_button, 7, 0, 1, 1)
+            collapse_button.show()
             bundle_icons = utils.get_bundle_icons()
             x = 0
-            y = 0
+            y = 1
             for bundle_id in bundle_icons.keys():
                 icon_path = bundle_icons[bundle_id]
                 if icon_path is None:
