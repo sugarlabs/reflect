@@ -189,7 +189,12 @@ class Graphics(Gtk.Alignment):
         entry.show()
         return entry
 
-    def add_two_entries(self, labeltext1='', text1='', labeltext2='', text2=''):
+    def add_two_entries(
+            self,
+            labeltext1='',
+            text1='',
+            labeltext2='',
+            text2=''):
         offset = style.GRID_CELL_SIZE
         size = 'large'
         color = style.COLOR_BLACK.get_html()

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#Copyright (c) 2014 Walter Bender
+# Copyright (c) 2014 Walter Bender
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,6 +12,7 @@
 
 import os
 import shutil
+import time
 from ConfigParser import ConfigParser
 import json
 from gettext import gettext as _
@@ -20,9 +21,6 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 from gi.repository import GObject
-from gi.repository import GConf
-
-from gi.repository import SugarExt
 
 from sugar3.activity import activity
 from sugar3.activity.widgets import StopButton
@@ -32,7 +30,7 @@ from sugar3.graphics.radiotoolbutton import RadioToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.graphics.toolbarbox import ToolbarButton
 from sugar3.graphics import iconentry
-from sugar3.graphics.alert import NotifyAlert, Alert
+from sugar3.graphics.alert import Alert
 from sugar3.graphics.icon import Icon
 from sugar3.graphics import style
 from sugar3 import profile
@@ -52,7 +50,6 @@ except ImportError:
 
 
 from reflectwindow import ReflectWindow
-from graphics import Graphics, FONT_SIZES
 import utils
 
 import logging
@@ -225,7 +222,7 @@ class ReflectActivity(activity.Activity):
             if 'comments' in dsobj.metadata:
                 try:
                     comments = json.loads(dsobj.metadata['comments'])
-                except:
+                except BaseException:
                     comments = []
                 self.reflection_data[-1]['comments'] = []
                 for comment in comments:
@@ -239,7 +236,7 @@ class ReflectActivity(activity.Activity):
                         else:
                             data['color'] = '#000000'
                         self.reflection_data[-1]['comments'].append(data)
-                    except:
+                    except BaseException:
                         _logger.debug('could not parse comment %s'
                                       % comment)
             if 'mime_type' in dsobj.metadata and \
@@ -309,7 +306,7 @@ class ReflectActivity(activity.Activity):
             self._overlay_window.modify_bg(
                 Gtk.StateType.NORMAL, style.COLOR_WHITE.get_gdk_color())
             self._overlay_window.set_policy(
-                 Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+                Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
             self._overlay_area = Gtk.Alignment.new(0.5, 0, 0, 0)
             self._overlay_window.add_with_viewport(self._overlay_area)
             self._overlay_area.show()
@@ -328,7 +325,7 @@ class ReflectActivity(activity.Activity):
 
             self._reflect_window.set_events(Gdk.EventMask.KEY_PRESS_MASK)
             self._reflect_window.connect('key_press_event',
-                                      self._reflect_window.keypress_cb)
+                                         self._reflect_window.keypress_cb)
             self._reflect_window.set_can_focus(True)
             self._reflect_window.grab_focus()
 
@@ -576,7 +573,7 @@ class ReflectActivity(activity.Activity):
 
     def _search_entry_changed_cb(self, entry):
         logging.debug('_search_entry_changed_cb search for \'%s\'',
-                     self._search_entry.props.text)
+                      self._search_entry.props.text)
         self.busy_cursor()
         self._do_search_changed()
 
@@ -814,9 +811,10 @@ class ReflectActivity(activity.Activity):
                                     content['image'], 120, 90)
                                 if pixbuf is not None:
                                     data = utils.pixbuf_to_base64(pixbuf)
-                                self.send_event(PICTURE_CMD,
-                                    {"image": os.path.basename(content['image']),
-                                     "data": data})
+                                self.send_event(
+                                    PICTURE_CMD, {
+                                        "image": os.path.basename(
+                                            content['image']), "data": data})
                 data = json.dumps(self.reflection_data)
                 self.send_event(SHARE_CMD, {"data": data})
         elif command == NEW_REFLECTION_CMD:
@@ -871,7 +869,7 @@ class ReflectActivity(activity.Activity):
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
-                    if not 'comments' in item:
+                    if 'comments' not in item:
                         item['comments'] = []
                     data = {'nick': nick, 'comment': comment, 'color': color}
                     item['comments'].append(data)
@@ -887,7 +885,7 @@ class ReflectActivity(activity.Activity):
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
-                    if not '' in item:
+                    if '' not in item:
                         item['content'] = []
                     item['content'].append({'text': reflection})
                     self._reflect_window.insert_reflection(obj_id, reflection)
@@ -902,7 +900,7 @@ class ReflectActivity(activity.Activity):
             for item in self.reflection_data:
                 if item['obj_id'] == obj_id:
                     found_the_object = True
-                    if not '' in item:
+                    if '' not in item:
                         item['content'] = []
                     item['content'].append(
                         {'image': os.path.join(self.tmp_path, basename)})
@@ -937,6 +935,7 @@ class ReflectActivity(activity.Activity):
 
 class ChatTube(ExportedGObject):
     ''' Class for setting up tube for sharing '''
+
     def __init__(self, tube, is_initiator, stack_received_cb):
         super(ChatTube, self).__init__(tube, PATH)
         self.tube = tube
