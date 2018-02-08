@@ -24,7 +24,7 @@ from gi.repository import GdkPixbuf
 from gi.repository import Pango
 
 from sugar3.graphics import style
-from sugar3.graphics.icon import CanvasIcon, EventIcon
+from sugar3.graphics.icon import EventIcon
 from sugar3.datastore import datastore
 from sugar3 import profile
 from sugar3 import util
@@ -33,7 +33,6 @@ import logging
 _logger = logging.getLogger('reflect-window')
 
 import utils
-from graphics import Graphics
 
 BUTTON_SIZE = 30
 STAR_SIZE = 20
@@ -155,7 +154,7 @@ class ReflectWindow(Gtk.Alignment):
                              'message': comment['comment'],
                              'icon-color': '%s,%s' % (
                                  comment['color'], comment['color'])
-                           })
+                             })
                 dsobj.metadata['comments'] = json.dumps(data)
                 datastore.write(dsobj,
                                 update_mtime=False,
@@ -244,7 +243,7 @@ class ReflectionGrid(Gtk.EventBox):
         self._expand_button = EventIcon(icon_name='expand',
                                         pixel_size=BUTTON_SIZE)
         self._collapse_id = self._expand_button.connect('button-press-event',
-                                           self._expand_cb)
+                                                        self._expand_cb)
         self._expand_button.set_tooltip(_('Expand'))
         self._grid.attach(self._expand_button, 0, row, 1, 1)
         self._expand_button.show()
@@ -412,7 +411,7 @@ class ReflectionGrid(Gtk.EventBox):
                         if first_image:
                             self._content_we_always_show.append(align)
                             first_image = False
-                    except:
+                    except BaseException:
                         logging.error('could not open %s' % item['image'])
                 if obj is not None:
                     align.add(obj)
@@ -431,7 +430,9 @@ class ReflectionGrid(Gtk.EventBox):
             self._new_image = EventIcon(icon_name='add-picture',
                                         pixel_size=BUTTON_SIZE)
             self._new_image.set_tooltip(_('Add new image'))
-            self._new_image.connect('button-press-event', self._image_button_cb)
+            self._new_image.connect(
+                'button-press-event',
+                self._image_button_cb)
             self._grid.attach(self._new_image, 6, row, 1, 1)
             self._content_we_always_show.append(self._new_image)
 
@@ -471,8 +472,8 @@ class ReflectionGrid(Gtk.EventBox):
     def _star_button_cb(self, button, event, n):
         self.update_stars(n)
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(STAR_CMD,
-                {"obj_id": self._reflection.data["obj_id"], "stars": n})
+            self._reflection.activity.send_event(
+                STAR_CMD, {"obj_id": self._reflection.data["obj_id"], "stars": n})
 
     def update_stars(self, n):
         if 'stars' in self._reflection.data:
@@ -555,9 +556,8 @@ class ReflectionGrid(Gtk.EventBox):
         text_buffer.set_text(label.replace('\12', ''))
         if self._reflection.activity.sharing:
             data = json.dumps(self._reflection.data['tags'])
-            self._reflection.activity.send_event(TAG_CMD,
-                {"obj_id": self._refelection.data["ob_id"],
-                 "reflection": data})
+            self._reflection.activity.send_event(
+                TAG_CMD, {"obj_id": self._refelection.data["ob_id"], "reflection": data})
         self._reflection.set_modification_time()
 
         # Update journal entry
@@ -586,9 +586,8 @@ class ReflectionGrid(Gtk.EventBox):
         text = widget.get_buffer().get_text(bounds[0], bounds[1], True)
         self._reflection.data['title'] = text
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(TITLE_CMD,
-                {"obj_id": self._reflection.data["obj_id"],
-                 "title": text})
+            self._reflection.activity.send_event(
+                TITLE_CMD, {"obj_id": self._reflection.data["obj_id"], "title": text})
         self._reflection.set_modification_time()
 
         # Update journal entry
@@ -615,7 +614,7 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _comment_activate_cb(self, entry):
         text = entry.props.text
-        if not 'comments' in self._reflection.data:
+        if 'comments' not in self._reflection.data:
             self._reflection.data['comments'] = []
         data = {'nick': profile.get_nick_name(),
                 'color': self._reflection.activity.fg_color.get_html(),
@@ -669,16 +668,16 @@ class ReflectionGrid(Gtk.EventBox):
 
     def _entry_activate_cb(self, entry):
         text = entry.props.text
-        if not 'content' in self._reflection.data:
+        if 'content' not in self._reflection.data:
             self._reflection.data['content'] = []
         self._reflection.data['content'].append({'text': text})
         self._reflection.set_modification_time()
         self.add_new_reflection(text)
         # Send the reflection
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(REFLECTION_CMD,
-                {"obj_id": self._reflection.data["obj_id"],
-                 "reflection": text})
+            self._reflection.activity.send_event(
+                REFLECTION_CMD, {
+                    "obj_id": self._reflection.data["obj_id"], "reflection": text})
         entry.set_text('')
 
     def add_new_reflection(self, text):
@@ -735,13 +734,13 @@ class ReflectionGrid(Gtk.EventBox):
         self._reflection.activity.hide_overlay_area()
         self.add_activity(bundle_id)
         if self._reflection.activity.sharing:
-            self._reflection.activity.send_event(ACTIVITY_CMD,
-                {"obj_id": self._reflection.data["obj_id"],
-                 "bundle_id": bundle_id})
+            self._reflection.activity.send_event(
+                ACTIVITY_CMD, {
+                    "obj_id": self._reflection.data["obj_id"], "bundle_id": bundle_id})
 
     def add_activity(self, bundle_id):
         ''' Add activity from sharer '''
-        if not 'activities' in self._reflection.data:
+        if 'activities' not in self._reflection.data:
             self._reflection.data['activities'] = []
         self._reflection.data['activities'].append(
             utils.bundle_id_to_icon(bundle_id))
@@ -784,7 +783,7 @@ class ReflectionGrid(Gtk.EventBox):
         from sugar3.graphics.objectchooser import ObjectChooser
         try:
             from sugar3.graphics.objectchooser import FILTER_TYPE_GENERIC_MIME
-        except:
+        except BaseException:
             FILTER_TYPE_GENERIC_MIME = 'generic_mime'
         from sugar3 import mime
 
@@ -802,7 +801,7 @@ class ReflectionGrid(Gtk.EventBox):
                                         what_filter=mime.GENERIC_TYPE_IMAGE,
                                         filter_type=FILTER_TYPE_GENERIC_MIME,
                                         show_preview=True)
-            except:
+            except BaseException:
                 chooser = ObjectChooser(parent=self._reflection.activity,
                                         what_filter=mime.GENERIC_TYPE_IMAGE)
         else:
@@ -832,12 +831,14 @@ class ReflectionGrid(Gtk.EventBox):
                 pixbuf = self.add_new_picture(jobject.file_path)
                 self._reflection.set_modification_time()
                 if self._reflection.activity.sharing and pixbuf is not None:
-                    self._reflection.activity.send_event(PICTURE_CMD,
-                        {"basename": os.path.basename(jobject.file_path),
-                         "data": utils.pixbuf_to_base64(pixbuf)})
-                    self._reflection.activity.send_event(IMAGE_REFLECTION_CMD,
-                        {"obj_id": self._reflection.data["obj_id"],
-                         "basename": os.path.basename(jobject.file_path)})
+                    self._reflection.activity.send_event(
+                        PICTURE_CMD, {
+                            "basename": os.path.basename(
+                                jobject.file_path), "data": utils.pixbuf_to_base64(pixbuf)})
+                    self._reflection.activity.send_event(
+                        IMAGE_REFLECTION_CMD, {
+                            "obj_id": self._reflection.data["obj_id"], "basename": os.path.basename(
+                                jobject.file_path)})
 
         self._reflection.activity.reset_cursor()
 
@@ -846,8 +847,8 @@ class ReflectionGrid(Gtk.EventBox):
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
                 path, PICTURE_WIDTH, PICTURE_HEIGHT)
             obj = Gtk.Image.new_from_pixbuf(pixbuf)
-        except:
-            logging.error('could not open %s' % jobject.file_path)
+        except BaseException:
+            logging.error('could not open %s' % path)
             return None
 
         align = Gtk.Alignment.new(
@@ -858,13 +859,12 @@ class ReflectionGrid(Gtk.EventBox):
         self._grid.attach(align, 1, self._row, 5, 1)
         self._row += 1
         align.show()
-        if not 'content' in self._reflection.data:
+        if 'content' not in self._reflection.data:
             self._reflection.data['content'] = []
         self._reflection.data['content'].append({'image': path})
 
         if self._reflection.activity.sharing:
             return pixbuf
-
 
     def _expand_cb(self, button, event):
         self._grid.set_row_spacing(style.DEFAULT_SPACING)
@@ -897,7 +897,7 @@ class ReflectionGrid(Gtk.EventBox):
             self._new_tag.hide()
         self._stars_align.hide()
         for align in self._content_aligns:
-            if not align in self._content_we_always_show:
+            if align not in self._content_we_always_show:
                 align.hide()
         for align in self._comment_aligns:
             align.hide()
@@ -931,7 +931,7 @@ class Reflection():
 
     def set_creation_time(self):
         self.data['creation_time'] = int(time.time())
-        if not 'modification_time' in self.data:
+        if 'modification_time' not in self.data:
             self.data['modification_time'] = self.data['creation_time']
 
     def set_modification_time(self):
@@ -953,15 +953,11 @@ class Reflection():
         ''' an image file pathname '''
         self.data['content'].append({'image': image})
 
-    def add_activity(self, activity):
-        ''' an activity icon '''
-        self.data['activities'].append(activity)
-
     def search_tags(self, tag):
         return tag in self.data['tags']
 
     def add_activity(self, activity):
-        if not 'activities' in self.data:
+        if 'activities' not in self.data:
             self.data['activities'] = []
         self.data['activities'].append(activity)
 
@@ -985,4 +981,3 @@ class Reflection():
             self.graphics.hide()
         else:
             self.graphics.show()
-
