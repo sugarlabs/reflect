@@ -12,10 +12,13 @@
 
 from gettext import gettext as _
 
-from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import WebKit
+import gi
+gi.require_version('Gdk', '3.0')
+gi.require_version('Gtk', '3.0')
+gi.require_version('WebKit2', '4.0')
 
+from gi.repository import Gtk
+from gi.repository import WebKit2
 from sugar3.graphics import style
 from sugar3.graphics.icon import Icon
 from sugar3.graphics.toolbutton import ToolButton
@@ -166,7 +169,7 @@ class Graphics(Gtk.Alignment):
         return button
 
     def add_uri(self, uri, height=610):
-        self._web_view = WebKit.WebView()
+        self._web_view = WebKit2.WebView()
         width = Gdk.Screen.width() - style.GRID_CELL_SIZE
         height = int(height * Gdk.Screen.height() / 900.)
         self._web_view.set_size_request(width, height)
