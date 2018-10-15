@@ -173,7 +173,7 @@ class Graphics(Gtk.Alignment):
         width = Gdk.Screen.width() - style.GRID_CELL_SIZE
         height = int(height * Gdk.Screen.height() / 900.)
         self._web_view.set_size_request(width, height)
-        self._web_view.set_full_content_zoom(True)
+        self._web_view.set_zoom_level(1.0)
         self._web_view.load_uri(uri)
         self._attach(self._web_view)
         self._web_view.show()

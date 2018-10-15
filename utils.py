@@ -10,6 +10,7 @@
 # along with this library; if not, write to the Free Software
 # Foundation, 51 Franklin Street, Suite 500 Boston, MA 02110-1335 USA
 
+import gi
 import os
 import json
 import subprocess
@@ -25,6 +26,11 @@ import email.utils
 import re
 import time
 from ConfigParser import ConfigParser
+
+gi.require_version('Vte', '2.91')
+gi.require_version('Gdk', '3.0')
+gi.require_version('Gtk', '3.0')
+gi.require_version('GConf', '2.0')
 
 from gi.repository import Vte
 from gi.repository import Gio
