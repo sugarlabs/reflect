@@ -27,11 +27,6 @@ import re
 import time
 from ConfigParser import ConfigParser
 
-gi.require_version('Vte', '2.91')
-gi.require_version('Gdk', '3.0')
-gi.require_version('Gtk', '3.0')
-gi.require_version('GConf', '2.0')
-
 from gi.repository import Vte
 from gi.repository import Gio
 from gi.repository import Gdk
