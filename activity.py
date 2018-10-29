@@ -17,6 +17,12 @@ from ConfigParser import ConfigParser
 import json
 from gettext import gettext as _
 
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('GConf', '2.0')
+gi.require_version('Vte', '2.91')
+gi.require_version('Wnck', '3.0')
+
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
