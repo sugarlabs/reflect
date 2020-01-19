@@ -1095,7 +1095,7 @@ def uitree_dump():
     try:
         return json.loads(dbus.Interface(proxy, _DBUS_SERVICE).Dump())
     except Exception as e:
-        print(('ERROR calling Dump: %s' % e))
+        print('ERROR calling Dump: %s' % e)
         # _logger.error('ERROR calling Dump: %s' % e)
     return ''
 
