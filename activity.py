@@ -45,7 +45,7 @@ from sugar3.datastore import datastore
 from dbus.gi_service import TelepathyGLib
 import dbus
 from dbus.service import signal
-from dbus.gobject_service import ExportedGObject
+from dbus.gi_service import ExportedGObject
 from sugar3.presence import presenceservice
 from sugar3.graphics.objectchooser import ObjectChooser
 
