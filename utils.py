@@ -17,14 +17,14 @@ import dbus
 import stat
 import statvfs
 import glob
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from random import uniform
 import tempfile
 import cairo
 import email.utils
 import re
 import time
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 
 from gi.repository import Vte
 from gi.repository import Gio
@@ -360,7 +360,7 @@ def check_volume_suffix(volume_file):
         return TRAINING_DATA % volume_file[-13:]
     elif volume_file.endswith('.bin'):  # See SEP-33
         new_volume_file = volume_file[:-4] + TRAINING_SUFFIX
-        print new_volume_file
+        print(new_volume_file)
         os.rename(volume_file, new_volume_file)
         _logger.debug('return %s' % (TRAINING_DATA % new_volume_file[-13:]))
         return TRAINING_DATA % new_volume_file[-13:]
@@ -534,7 +534,7 @@ def is_landscape():
 
 
 def get_safe_text(text):
-    return urllib.pathname2url(text.encode('ascii', 'xmlcharrefreplace'))
+    return urllib.request.pathname2url(text.encode('ascii', 'xmlcharrefreplace'))
 
 
 def get_battery_level():
@@ -1095,7 +1095,7 @@ def uitree_dump():
     try:
         return json.loads(dbus.Interface(proxy, _DBUS_SERVICE).Dump())
     except Exception as e:
-        print ('ERROR calling Dump: %s' % e)
+        print('ERROR calling Dump: %s' % e)
         # _logger.error('ERROR calling Dump: %s' % e)
     return ''
 

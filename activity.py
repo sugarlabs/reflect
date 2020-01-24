@@ -13,7 +13,7 @@
 import os
 import shutil
 import time
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 import json
 from gettext import gettext as _
 
@@ -42,10 +42,10 @@ from sugar3.graphics import style
 from sugar3 import profile
 from sugar3.datastore import datastore
 
-import telepathy
+from dbus.gi_service import TelepathyGLib
 import dbus
 from dbus.service import signal
-from dbus.gobject_service import ExportedGObject
+from dbus.gi_service import ExportedGObject
 from sugar3.presence import presenceservice
 from sugar3.graphics.objectchooser import ObjectChooser
 
@@ -734,11 +734,11 @@ class ReflectActivity(activity.Activity):
         self.tubes_chan = self.shared_activity.telepathy_tubes_chan
         self.text_chan = self.shared_activity.telepathy_text_chan
 
-        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].connect_to_signal(
+        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].connect_to_signal(
             'NewTube', self._new_tube_cb)
 
         _logger.debug('This is my activity: making a tube...')
-        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].OfferDBusTube(
+        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].OfferDBusTube(
             SERVICE, {})
 
         self.sharing = True
@@ -762,11 +762,11 @@ class ReflectActivity(activity.Activity):
         self.tubes_chan = self.shared_activity.telepathy_tubes_chan
         self.text_chan = self.shared_activity.telepathy_text_chan
 
-        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].connect_to_signal(
+        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].connect_to_signal(
             'NewTube', self._new_tube_cb)
 
         _logger.debug('I am joining an activity: waiting for a tube...')
-        self.tubes_chan[telepathy.CHANNEL_TYPE_TUBES].ListTubes(
+        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].ListTubes(
             reply_handler=self._list_tubes_reply_cb,
             error_handler=self._list_tubes_error_cb)
 
@@ -790,7 +790,7 @@ class ReflectActivity(activity.Activity):
         if (type == telepathy.TUBE_TYPE_DBUS and service == SERVICE):
             if state == telepathy.TUBE_STATE_LOCAL_PENDING:
                 self.tubes_chan[
-                    telepathy.CHANNEL_TYPE_TUBES].AcceptDBusTube(id)
+                    TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].AcceptDBusTube(id)
 
             self.collab = CollabWrapper(self)
             self.collab.message.connect(self.event_received_cb)

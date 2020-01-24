@@ -68,7 +68,6 @@ from telepathy.interfaces import \
     CHANNEL_TYPE_TEXT, \
     CHANNEL_TYPE_FILE_TRANSFER, \
     CONN_INTERFACE_ALIASING, \
-    CHANNEL, \
     CLIENT
 from telepathy.constants import \
     CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES, \
@@ -89,7 +88,7 @@ _logger = logging.getLogger('text-channel-wrapper')
 ACTION_INIT_REQUEST = '!!ACTION_INIT_REQUEST'
 ACTION_INIT_RESPONSE = '!!ACTION_INIT_RESPONSE'
 ACTIVITY_FT_MIME = 'x-sugar/from-activity'
-
+CHANNEL = TelepathyGLib.IFACE_CHANNEL
 
 class CollabWrapper(GObject.GObject):
     '''
