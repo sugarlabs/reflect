@@ -15,7 +15,6 @@ import json
 import subprocess
 import dbus
 import stat
-import statvfs
 import glob
 import urllib
 from random import uniform
@@ -508,8 +507,8 @@ def unexpected_training_data_files(path, name):
 def is_full(path, required=_MINIMUM_SPACE):
     ''' Make sure we have some room to write our data '''
     volume_status = os.statvfs(path)
-    free_space = volume_status[statvfs.F_BSIZE] * \
-        volume_status[statvfs.F_BAVAIL]
+    free_space = volume_status[os.statvfs().f_bsize] * \
+        volume_status[os.statvfs().f_bavail]
     _logger.debug('free space: %d MB' % int(free_space / (1024 * 1024)))
     if free_space < required:
         _logger.error('free space: %d MB' % int(free_space / (1024 * 1024)))
