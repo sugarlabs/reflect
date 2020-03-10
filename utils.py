@@ -31,7 +31,6 @@ from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 from gi.repository import Gtk
 from gi.repository import GLib
-from gi.repository import GConf
 from gi.repository import GObject
 
 from sugar3 import env
@@ -555,8 +554,9 @@ def get_battery_level():
 
 
 def get_sound_level():
-    client = GConf.Client.get_default()
-    return client.get_int('/desktop/sugar/sound/volume')
+    settings = Gio.Settings('org.sugarlabs.sound')
+    volume = settings.get_string('volume')
+    return volume
 
 
 def is_clipboard_text_available():
@@ -982,8 +982,10 @@ def get_launch_count(activity):
 
 
 def get_colors():
-    client = GConf.Client.get_default()
-    return XoColor(client.get_string('/desktop/sugar/user/color'))
+    settings = Gio.Settings('org.sugarlabs.user')
+    path = '/desktop/sugar/user/color'
+    color = settings.get_string('color')
+    return XoColor(color)
 
 
 def get_nick():
