@@ -555,7 +555,7 @@ def get_battery_level():
 
 def get_sound_level():
     settings = Gio.Settings('org.sugarlabs.sound')
-    volume = settings.get_string('volume')
+    volume = settings.get_int('volume')
     return volume
 
 
@@ -983,7 +983,6 @@ def get_launch_count(activity):
 
 def get_colors():
     settings = Gio.Settings('org.sugarlabs.user')
-    path = '/desktop/sugar/user/color'
     color = settings.get_string('color')
     return XoColor(color)
 
