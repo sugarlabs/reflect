@@ -8,4 +8,4 @@ show_launcher = yes
 license = GPLv3
 single_instance = yes
 summary = a tool for reflecting on your work
-repository = https://github.com/walterbender/reflect
+repository = https://github.com/sugarlabs/reflect.git
