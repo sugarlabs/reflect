@@ -1,6 +1,6 @@
 [Activity]
 name = Reflect
-exec = sugar-activity activity.ReflectActivity
+exec = sugar-activity3 activity.ReflectActivity
 bundle_id = org.sugarlabs.Reflect
 icon = reflect
 activity_version = 1.0

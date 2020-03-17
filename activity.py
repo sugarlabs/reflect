@@ -13,7 +13,7 @@
 import os
 import shutil
 import time
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 import json
 from gettext import gettext as _
 
