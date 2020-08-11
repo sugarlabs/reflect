@@ -136,7 +136,7 @@ def _find_bundles():
                                              'activity.info'))
 
     for path in info_files:
-        fd = open(path, 'rb')
+        fd = open(path, 'r')
         cp = ConfigParser()
         cp.readfp(fd)
         section = 'Activity'
