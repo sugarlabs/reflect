@@ -87,7 +87,7 @@ class ReflectActivity(activity.Activity):
         except dbus.exceptions.DBusException as e:
             _logger.error(str(e))
 
-        logging.error('setting reflection data to []')
+        logging.debug('setting reflection data to []')
         self.reflection_data = []
 
         self.connect('realize', self.__realize_cb)
@@ -569,7 +569,7 @@ class ReflectActivity(activity.Activity):
             for i, tag in enumerate(tags):
                 if not tag[0] == '#':
                     tags[i] = '#%s' % tag
-            logging.error(tags)
+            logging.debug(tags)
             for item in self.reflection_data:
                 hidden = True
                 if 'tags' in item:
