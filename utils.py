@@ -1079,7 +1079,7 @@ def get_odt():
 def get_speak_settings(activity):
     file_path = activity.file_path
     try:
-        configuration = json.loads(file(file_path, 'r').read())
+        configuration = json.loads(open(file_path, 'r').read())
         status = json.loads(configuration['status'])
     except Exception:
         # Ignore: Speak activity has not yet written out its data.
