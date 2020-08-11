@@ -48,10 +48,7 @@ from dbus.gi_service import ExportedGObject
 from sugar3.presence import presenceservice
 from sugar3.graphics.objectchooser import ObjectChooser
 
-try:
-    from sugar3.presence.wrapper import CollabWrapper
-except ImportError:
-    from textchannelwrapper import CollabWrapper
+from collabwrapper import CollabWrapper
 
 
 from reflectwindow import ReflectWindow
