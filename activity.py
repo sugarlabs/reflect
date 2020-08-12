@@ -41,11 +41,7 @@ from sugar3.graphics import style
 from sugar3 import profile
 from sugar3.datastore import datastore
 
-from gi.repository import TelepathyGLib
-import dbus
-from dbus.service import signal
-from dbus.gi_service import ExportedGObject
-from sugar3.presence import presenceservice
+
 from sugar3.graphics.objectchooser import ObjectChooser
 
 from collabwrapper import CollabWrapper
@@ -79,10 +75,7 @@ class ReflectActivity(activity.Activity):
 
     def __init__(self, handle):
         ''' Initialize the toolbar '''
-        try:
-            super(ReflectActivity, self).__init__(handle)
-        except dbus.exceptions.DBusException as e:
-            _logger.error(str(e))
+        super(ReflectActivity, self).__init__(handle)
 
         logging.debug('setting reflection data to []')
         self.reflection_data = []
@@ -121,29 +114,34 @@ class ReflectActivity(activity.Activity):
         self._fixed = None
 
         self.initiating = True
-        if self.shared_activity:
-            # We're joining
-            if not self.get_shared():
-                self.initiating = False
-
-                self.busy_cursor()
-                share_icon = Icon(icon_name='zoom-neighborhood')
-                self._joined_alert = Alert()
-                self._joined_alert.props.icon = share_icon
-                self._joined_alert.props.title = _('Please wait')
-                self._joined_alert.props.msg = _('Starting connection...')
-                self.add_alert(self._joined_alert)
-
-                # Wait for joined signal
-                self.connect("joined", self._joined_cb)
+        self._setup_dispatch_table()
 
         self._open_reflect_windows()
 
-        self._setup_presence_service()
+        self.connect('shared', self._shared_cb)
+
+        self.collab = CollabWrapper(self)
+
+        self.collab.connect('message', self._message_cb)
+
+        self.collab.connect('joined', self._joined_cb)
+
+        def on_buddy_joined_cb(collab, buddy, msg):
+            logging.debug('on_buddy_joined_cb buddy %r' % (buddy.props.nick))
+
+        self.collab.connect('buddy_joined', on_buddy_joined_cb,
+                             'buddy_joined')
+
+        def on_buddy_left_cb(collab, buddy, msg):
+            logging.debug('on_buddy_left_cb buddy %r' % (buddy.props.nick))
+
+        self.collab.connect('buddy_left', on_buddy_left_cb, 'buddy_left')
+
+        self.collab.setup()
 
         # Joiners wait to receive data from sharer
         # Otherwise, load reflections from local store
-        if not self.shared_activity:
+        if not self.sharing:
             self.busy_cursor()
             GObject.idle_add(self._load_reflections)
 
@@ -165,6 +163,7 @@ class ReflectActivity(activity.Activity):
         self._find_starred()
         self._reflect_window.load(self.reflection_data)
         self.reset_cursor()
+        self.send_new_reflection()
 
     def _found_obj_id(self, obj_id):
         for item in self.reflection_data:
@@ -705,259 +704,190 @@ class ReflectActivity(activity.Activity):
         if response_id is Gtk.ResponseType.OK:
             self.close()
 
-    def _setup_presence_service(self):
-        ''' Setup the Presence Service. '''
-        self.pservice = presenceservice.get_instance()
+    def set_data(self, data):
+        pass
 
-        owner = self.pservice.get_owner()
-        self.owner = owner
-        self._share = ''
-        self.connect('shared', self._shared_cb)
-        self.connect('joined', self._joined_cb)
+    def get_data(self):
+        return None
 
     def _shared_cb(self, activity):
         ''' Either set up initial share...'''
-        if self.shared_activity is None:
-            _logger.error('Failed to share or join activity ... \
-                shared_activity is null in _shared_cb()')
-            return
-
-        self.initiating = True
-        self._waiting_for_reflections = False
-        _logger.debug('I am sharing...')
-
-        self.conn = self.shared_activity.telepathy_conn
-        self.tubes_chan = self.shared_activity.telepathy_tubes_chan
-        self.text_chan = self.shared_activity.telepathy_text_chan
-
-        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].connect_to_signal(
-            'NewTube', self._new_tube_cb)
-
-        _logger.debug('This is my activity: making a tube...')
-        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].OfferDBusTube(
-            SERVICE, {})
-
-        self.sharing = True
+        self.after_share_join(True)
 
     def _joined_cb(self, activity):
         ''' ...or join an exisiting share. '''
-        if self.shared_activity is None:
-            _logger.error('Failed to share or join activity ... \
-                shared_activity is null in _shared_cb()')
-            return
+        self.after_share_join(False)
 
-        if self._joined_alert is not None:
-            self.remove_alert(self._joined_alert)
-            self._joined_alert = None
+    def after_share_join(self, sharer):
+        self.initiating = sharer
+        self._waiting_for_reflections = not sharer
+        self._sharing = True
 
-        self.initiating = False
-        self._waiting_for_reflections = True
-        _logger.debug('I joined a shared activity.')
+    def _setup_dispatch_table(self):
+        self._processing_methods = {
+            JOIN_CMD: [self.send_reflection_data, 'send reflection data'],
+            NEW_REFLECTION_CMD: [self.new_reflection, 'new reflection'],
+            TITLE_CMD: [self.receive_title, 'receive title'],
+            TAG_CMD: [self.receive_tags, 'receive tags'],
+            ACTIVITY_CMD: [self.receive_activity, 'receive activity'],
+            STAR_CMD: [self.receive_stars, 'receive stars'],
+            COMMENT_CMD: [self.receive_comment, 'receive comment'],
+            REFLECTION_CMD: [self.receive_reflection, 'receive reflection'],
+            IMAGE_REFLECTION_CMD: [self.receive_image_reflection, 'receive image reflection'],
+            PICTURE_CMD: [self.receive_picture, 'receive picture'],
+            SHARE_CMD: [self.receive_reflection_data, 'receive reflection data'],
 
-        self.conn = self.shared_activity.telepathy_conn
-        self.tubes_chan = self.shared_activity.telepathy_tubes_chan
-        self.text_chan = self.shared_activity.telepathy_text_chan
+        }
 
-        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].connect_to_signal(
-            'NewTube', self._new_tube_cb)
+    def send_new_reflection(self):
+        if self._waiting_for_reflections:
+            self.send_event(JOIN_CMD, {})
 
-        _logger.debug('I am joining an activity: waiting for a tube...')
-        self.tubes_chan[TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].ListTubes(
-            reply_handler=self._list_tubes_reply_cb,
-            error_handler=self._list_tubes_error_cb)
+    def send_reflection_data(self, payload):
+        # Sharer needs to send reflections database to joiners.
+        if self.initiating:
+            # Send pictures first.
+            for item in self.reflection_data:
+                if 'content' in item:
+                    for content in item['content']:
+                        if 'image' in content:
+                            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                                content['image'], 120, 90)
+                            if pixbuf is not None:
+                                data = utils.pixbuf_to_base64(pixbuf)
+                            self.send_event(
+                                PICTURE_CMD, {
+                                    "image": os.path.basename(
+                                        content['image']), "data": data})
+            data = json.dumps(self.reflection_data)
+            self.send_event(SHARE_CMD, {"data": data})
 
-        self.sharing = True
+    def receive_reflection_data(self, payload):
+        # Joiner needs to load reflection database.
+        if not self.initiating:
+            # Note that pictures should be received.
+            self.reflection_data = payload
+            self._reflect_window.load(self.reflection_data)
+            self._waiting_for_reflections = False
+            self.reset_cursor()
+            if self._joined_alert is not None:
+                self.remove_alert(self._joined_alert)
+                self._joined_alert = None
 
-    def _list_tubes_reply_cb(self, tubes):
-        ''' Reply to a list request. '''
-        for tube_info in tubes:
-            self._new_tube_cb(*tube_info)
+    def new_reflection(self, payload):
+        self._reflect_window.add_new_reflection(payload)
 
-    def _list_tubes_error_cb(self, e):
-        ''' Log errors. '''
-        _logger.error('ListTubes() failed: %s', e)
+    def receive_title(self, payload):
+        obj_id = payload.get("obj_id")
+        title = payload.get("title")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                self._reflect_window.update_title(obj_id, title)
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
 
-    def _new_tube_cb(self, id, initiator, type, service, params, state):
-        ''' Create a new tube. '''
-        _logger.debug('New tube: ID=%d initator=%d type=%d service=%s '
-                      'params=%r state=%d', id, initiator, type, service,
-                      params, state)
+    def receive_tags(self, payload):
+        obj_id = payload.get("obj_id")
+        data = payload.get("data")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                self._reflect_window.update_tags(obj_id, data)
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
 
-        if (type == TelepathyGLib.IFACE_CHANNEL_TYPE_DBUS_TUBE and service == SERVICE):
-            if state == TelepathyGLib.TubeState.LOCAL_PENDING:
-                self.tubes_chan[
-                    TelepathyGLib.IFACE_CHANNEL_TYPE_TUBES].AcceptDBusTube(id)
+    def receive_activity(self, payload):
+        obj_id = payload.get("obj_id")
+        bundle_id = payload.get("bundle_id")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                self._reflect_window.insert_activity(obj_id, bundle_id)
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
 
-            self.collab = CollabWrapper(self)
-            self.collab.message.connect(self.event_received_cb)
-            self.collab.setup()
+    def receive_stars(self, payload):
+        obj_id = payload.get("obj_id")
+        stars = payload.get("stars")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                self._reflect_window.update_stars(obj_id, int(stars))
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
 
-            if self._waiting_for_reflections:
-                self.send_event(JOIN_CMD, {})
-                self._joined_alert = Alert()
-                self._joined_alert.props.title = _('Please wait')
-                self._joined_alert.props.msg = _('Requesting reflections...')
-                self.add_alert(self._joined_alert)
+    def receive_comment(self, payload):
+        found_the_object = False
+        # Receive a comment and associated reflection ID
+        obj_id = payload.get("obj_id")
+        nick = payload.get("nick")
+        color = payload.get("color")
+        comment = payload.get("comment")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                if 'comments' not in item:
+                    item['comments'] = []
+                data = {'nick': nick, 'comment': comment, 'color': color}
+                item['comments'].append(data)
+                self._reflect_window.insert_comment(obj_id, data)
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
 
-    def event_received_cb(self, collab, buddy, msg):
+    def receive_reflection(self, payload):
+        found_the_object = False
+        # Receive a reflection and associated reflection ID
+        obj_id = payload.get("obj_id")
+        reflection = payload.get("reflection")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                if '' not in item:
+                    item['content'] = []
+                item['content'].append({'text': reflection})
+                self._reflect_window.insert_reflection(obj_id, reflection)
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
+
+    def receive_image_reflection(self, payload):
+        found_the_object = False
+        # Receive a picture reflection and associated reflection ID
+        obj_id = payload.get("obj_id")
+        basename = payload.get("basename")
+        for item in self.reflection_data:
+            if item['obj_id'] == obj_id:
+                found_the_object = True
+                if '' not in item:
+                    item['content'] = []
+                item['content'].append(
+                    {'image': os.path.join(self.tmp_path, basename)})
+                self._reflect_window.insert_picture(
+                    obj_id, os.path.join(self.tmp_path, basename))
+                break
+        if not found_the_object:
+            logging.error('Could not find obj_id %s' % obj_id)
+
+    def receive_picture(self, payload):
+        # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
+        basename = payload.get("basename")
+        data = payload.get("data")
+        utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
+
+    def _message_cb(self, collab, buddy, msg):
         ''' Data is passed as tuples: cmd:text '''
         command = msg.get("command")
         payload = msg.get("payload")
         logging.debug(command)
-
-        if command == JOIN_CMD:
-            # Sharer needs to send reflections database to joiners.
-            if self.initiating:
-                # Send pictures first.
-                for item in self.reflection_data:
-                    if 'content' in item:
-                        for content in item['content']:
-                            if 'image' in content:
-                                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                                    content['image'], 120, 90)
-                                if pixbuf is not None:
-                                    data = utils.pixbuf_to_base64(pixbuf)
-                                self.send_event(
-                                    PICTURE_CMD, {
-                                        "image": os.path.basename(
-                                            content['image']), "data": data})
-                data = json.dumps(self.reflection_data)
-                self.send_event(SHARE_CMD, {"data": data})
-        elif command == NEW_REFLECTION_CMD:
-            self._reflect_window.add_new_reflection(payload)
-        elif command == TITLE_CMD:
-            obj_id = payload.get("obj_id")
-            title = payload.get("title")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    self._reflect_window.update_title(obj_id, title)
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == TAG_CMD:
-            obj_id = payload.get("obj_id")
-            data = payload.get("data")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    self._reflect_window.update_tags(obj_id, data)
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == ACTIVITY_CMD:
-            obj_id = payload.get("obj_id")
-            bundle_id = payload.get("bundle_id")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    self._reflect_window.insert_activity(obj_id, bundle_id)
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == STAR_CMD:
-            obj_id = payload.get("obj_id")
-            stars = payload.get("stars")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    self._reflect_window.update_stars(obj_id, int(stars))
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == COMMENT_CMD:
-            found_the_object = False
-            # Receive a comment and associated reflection ID
-            obj_id = payload.get("obj_id")
-            nick = payload.get("nick")
-            color = payload.get("color")
-            comment = payload.get("comment")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    if 'comments' not in item:
-                        item['comments'] = []
-                    data = {'nick': nick, 'comment': comment, 'color': color}
-                    item['comments'].append(data)
-                    self._reflect_window.insert_comment(obj_id, data)
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == REFLECTION_CMD:
-            found_the_object = False
-            # Receive a reflection and associated reflection ID
-            obj_id = payload.get("obj_id")
-            reflection = payload.get("reflection")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    if '' not in item:
-                        item['content'] = []
-                    item['content'].append({'text': reflection})
-                    self._reflect_window.insert_reflection(obj_id, reflection)
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == IMAGE_REFLECTION_CMD:
-            found_the_object = False
-            # Receive a picture reflection and associated reflection ID
-            obj_id = payload.get("obj_id")
-            basename = payload.get("basename")
-            for item in self.reflection_data:
-                if item['obj_id'] == obj_id:
-                    found_the_object = True
-                    if '' not in item:
-                        item['content'] = []
-                    item['content'].append(
-                        {'image': os.path.join(self.tmp_path, basename)})
-                    self._reflect_window.insert_picture(
-                        obj_id, os.path.join(self.tmp_path, basename))
-                    break
-            if not found_the_object:
-                logging.error('Could not find obj_id %s' % obj_id)
-        elif command == PICTURE_CMD:
-            # Receive a picture (MAYBE DISPLAY IT AS IT ARRIVES?)
-            basename = payload.get("basename")
-            data = payload.get("data")
-            utils.base64_to_file(data, os.path.join(self.tmp_path, basename))
-        elif command == SHARE_CMD:
-            # Joiner needs to load reflection database.
-            if not self.initiating:
-                # Note that pictures should be received.
-                self.reflection_data = payload
-                self._reflect_window.load(self.reflection_data)
-                self._waiting_for_reflections = False
-                self.reset_cursor()
-                if self._joined_alert is not None:
-                    self.remove_alert(self._joined_alert)
-                    self._joined_alert = None
+        self._processing_methods[command][0](payload)
 
     def send_event(self, command, data):
         ''' Send event through the tube. '''
-        if hasattr(self, 'collab') and self.collab is not None:
-            data["command"] = command
-            self.collab.post(data)
-
-
-class ChatTube(ExportedGObject):
-    ''' Class for setting up tube for sharing '''
-
-    def __init__(self, tube, is_initiator, stack_received_cb):
-        super(ChatTube, self).__init__(tube, PATH)
-        self.tube = tube
-        self.is_initiator = is_initiator  # Are we sharing or joining activity?
-        self.stack_received_cb = stack_received_cb
-        self.stack = ''
-
-        self.tube.add_signal_receiver(self.send_stack_cb, 'SendText', IFACE,
-                                      path=PATH, sender_keyword='sender')
-
-    def send_stack_cb(self, text, sender=None):
-        if sender == self.tube.get_unique_name():
-            return
-        self.stack = text
-        self.stack_received_cb(text)
-
-    @signal(dbus_interface=IFACE, signature='s')
-    def SendText(self, text):
-        self.stack = text
+        data["command"] = command
+        self.collab.post(data)

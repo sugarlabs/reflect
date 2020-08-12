@@ -85,7 +85,7 @@ class ReflectWindow(Gtk.Alignment):
         self.load(reflection_data)
 
     def load(self, reflection_data):
-        if self._activity.initiating:
+        if self._activity.collab.props.leader:
             row = 1  # 0 is the entry for new reflections
         else:
             row = 0
