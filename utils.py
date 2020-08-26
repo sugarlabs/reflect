@@ -15,16 +15,15 @@ import json
 import subprocess
 import dbus
 import stat
-import statvfs
 import glob
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from random import uniform
 import tempfile
 import cairo
 import email.utils
 import re
 import time
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 
 from gi.repository import Vte
 from gi.repository import Gio
@@ -32,7 +31,6 @@ from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 from gi.repository import Gtk
 from gi.repository import GLib
-from gi.repository import GConf
 from gi.repository import GObject
 
 from sugar3 import env
@@ -138,7 +136,7 @@ def _find_bundles():
                                              'activity.info'))
 
     for path in info_files:
-        fd = open(path, 'rb')
+        fd = open(path, 'r')
         cp = ConfigParser()
         cp.readfp(fd)
         section = 'Activity'
@@ -360,7 +358,7 @@ def check_volume_suffix(volume_file):
         return TRAINING_DATA % volume_file[-13:]
     elif volume_file.endswith('.bin'):  # See SEP-33
         new_volume_file = volume_file[:-4] + TRAINING_SUFFIX
-        print new_volume_file
+        print(new_volume_file)
         os.rename(volume_file, new_volume_file)
         _logger.debug('return %s' % (TRAINING_DATA % new_volume_file[-13:]))
         return TRAINING_DATA % new_volume_file[-13:]
@@ -508,8 +506,8 @@ def unexpected_training_data_files(path, name):
 def is_full(path, required=_MINIMUM_SPACE):
     ''' Make sure we have some room to write our data '''
     volume_status = os.statvfs(path)
-    free_space = volume_status[statvfs.F_BSIZE] * \
-        volume_status[statvfs.F_BAVAIL]
+    free_space = volume_status[os.statvfs().f_bsize] * \
+        volume_status[os.statvfs().f_bavail]
     _logger.debug('free space: %d MB' % int(free_space / (1024 * 1024)))
     if free_space < required:
         _logger.error('free space: %d MB' % int(free_space / (1024 * 1024)))
@@ -534,7 +532,7 @@ def is_landscape():
 
 
 def get_safe_text(text):
-    return urllib.pathname2url(text.encode('ascii', 'xmlcharrefreplace'))
+    return urllib.request.pathname2url(text.encode('ascii', 'xmlcharrefreplace'))
 
 
 def get_battery_level():
@@ -556,8 +554,9 @@ def get_battery_level():
 
 
 def get_sound_level():
-    client = GConf.Client.get_default()
-    return client.get_int('/desktop/sugar/sound/volume')
+    settings = Gio.Settings('org.sugarlabs.sound')
+    volume = settings.get_int('volume')
+    return volume
 
 
 def is_clipboard_text_available():
@@ -983,8 +982,9 @@ def get_launch_count(activity):
 
 
 def get_colors():
-    client = GConf.Client.get_default()
-    return XoColor(client.get_string('/desktop/sugar/user/color'))
+    settings = Gio.Settings('org.sugarlabs.user')
+    color = settings.get_string('color')
+    return XoColor(color)
 
 
 def get_nick():
@@ -1079,7 +1079,7 @@ def get_odt():
 def get_speak_settings(activity):
     file_path = activity.file_path
     try:
-        configuration = json.loads(file(file_path, 'r').read())
+        configuration = json.loads(open(file_path, 'r').read())
         status = json.loads(configuration['status'])
     except Exception:
         # Ignore: Speak activity has not yet written out its data.
@@ -1095,7 +1095,7 @@ def uitree_dump():
     try:
         return json.loads(dbus.Interface(proxy, _DBUS_SERVICE).Dump())
     except Exception as e:
-        print ('ERROR calling Dump: %s' % e)
+        print('ERROR calling Dump: %s' % e)
         # _logger.error('ERROR calling Dump: %s' % e)
     return ''
 
