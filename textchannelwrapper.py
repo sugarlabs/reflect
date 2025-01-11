@@ -60,24 +60,9 @@ from gettext import gettext as _
 from gi.repository import GObject
 from gi.repository import Gio
 from gi.repository import GLib
+from gi.repository import TelepathyGLib as telepathy
 import dbus
-
-from telepathy.interfaces import \
-    CHANNEL_INTERFACE, \
-    CHANNEL_INTERFACE_GROUP, \
-    CHANNEL_TYPE_TEXT, \
-    CHANNEL_TYPE_FILE_TRANSFER, \
-    CONN_INTERFACE_ALIASING, \
-    CHANNEL, \
-    CLIENT
-from telepathy.constants import \
-    CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES, \
-    CONNECTION_HANDLE_TYPE_CONTACT, \
-    CHANNEL_TEXT_MESSAGE_TYPE_NORMAL, \
-    CONNECTION_HANDLE_TYPE_CONTACT, \
-    SOCKET_ADDRESS_TYPE_UNIX, \
-    SOCKET_ACCESS_CONTROL_LOCALHOST
-from telepathy.client import Connection, Channel
+from dbus.mainloop.glib import DBusGMainLoop
 
 from sugar3.presence import presenceservice
 from sugar3.activity.activity import SCOPE_PRIVATE
@@ -86,9 +71,46 @@ from sugar3.graphics.alert import NotifyAlert
 import logging
 _logger = logging.getLogger('text-channel-wrapper')
 
+
 ACTION_INIT_REQUEST = '!!ACTION_INIT_REQUEST'
 ACTION_INIT_RESPONSE = '!!ACTION_INIT_RESPONSE'
 ACTIVITY_FT_MIME = 'x-sugar/from-activity'
+CHANNEL = 'org.freedesktop.Telepathy.Channel'
+CHANNEL_TYPE_TEXT = 'org.freedesktop.Telepathy.Channel.Type.Text'
+CHANNEL_TYPE_FILE_TRANSFER = 'org.freedesktop.Telepathy.Channel.Type.FileTransfer'
+CHANNEL_INTERFACE = 'org.freedesktop.Telepathy.Channel.Interface'
+CHANNEL_INTERFACE_GROUP = 'org.freedesktop.Telepathy.Channel.Interface.Group'
+CONN_INTERFACE_ALIASING = 'org.freedesktop.Telepathy.Connection.Interface.Aliasing'
+CONNECTION_HANDLE_TYPE_CONTACT = 1
+CHANNEL_TEXT_MESSAGE_TYPE_NORMAL = 0
+SOCKET_ADDRESS_TYPE_UNIX = 1
+SOCKET_ACCESS_CONTROL_LOCALHOST = 1
+CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES = 1
+CLIENT = 'org.freedesktop.Telepathy.Client'
+
+FT_STATE_NONE = 0
+FT_STATE_PENDING = 1
+FT_STATE_ACCEPTED = 2
+FT_STATE_OPEN = 3
+FT_STATE_COMPLETED = 4
+FT_STATE_CANCELLED = 5
+
+FT_REASON_NONE = 0
+FT_REASON_REQUESTED = 1
+FT_REASON_LOCAL_STOPPED = 2
+FT_REASON_REMOTE_STOPPED = 3
+FT_REASON_LOCAL_ERROR = 4
+FT_REASON_REMOTE_ERROR = 5
+
+
+class Connection(telepathy.Connection):
+    def __init__(self, bus_name, object_path):
+        super().__init__(bus_name, object_path)
+        
+class Channel(telepathy.Channel):
+    def __init__(self, bus_name, object_path):
+        super().__init__(bus_name, object_path)
+
 
 
 class CollabWrapper(GObject.GObject):
@@ -569,7 +591,7 @@ class _BaseOutgoingTransfer(_BaseFileTransfer):
         self.buddy = buddy
 
     def _create_channel(self, file_size):
-        object_path, properties_ = self._conn.CreateChannel(dbus.Dictionary({
+        object_path, properties_ = self._conn.create_channel(dbus.Dictionary({
             CHANNEL + '.ChannelType': CHANNEL_TYPE_FILE_TRANSFER,
             CHANNEL + '.TargetHandleType': CONNECTION_HANDLE_TYPE_CONTACT,
             CHANNEL + '.TargetHandle': self.buddy.contact_handle,
@@ -578,12 +600,13 @@ class _BaseOutgoingTransfer(_BaseFileTransfer):
             CHANNEL_TYPE_FILE_TRANSFER + '.Size': file_size,
             CHANNEL_TYPE_FILE_TRANSFER + '.ContentType': self._mime,
             CHANNEL_TYPE_FILE_TRANSFER + '.InitialOffset': 0}, signature='sv'))
-        self.set_channel(Channel(self._conn.bus_name, object_path))
+        self.set_channel(Channel(self._conn.get_bus_name(), object_path))
 
         channel_file_transfer = self.channel[CHANNEL_TYPE_FILE_TRANSFER]
-        self._socket_address = channel_file_transfer.ProvideFile(
+        self._socket_address = channel_file_transfer.provide_file(
             SOCKET_ADDRESS_TYPE_UNIX, SOCKET_ACCESS_CONTROL_LOCALHOST, '',
             byte_arrays=True)
+
 
     def _get_input_stream(self):
         raise NotImplementedError()
@@ -761,7 +784,8 @@ class _TextChannelWrapper(object):
         pservice = presenceservice.get_instance()
 
         # Get the Telepathy Connection
-        tp_name, tp_path = pservice.get_preferred_connection()
+        tp_name = "org.freedesktop.Telepathy.Connection"
+        tp_path = "/org/freedesktop/Telepathy/Connection"
         conn = Connection(tp_name, tp_path)
         group = self._text_chan[CHANNEL_INTERFACE_GROUP]
         my_csh = group.GetSelfHandle()
