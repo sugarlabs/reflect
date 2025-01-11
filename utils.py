@@ -15,7 +15,6 @@ import json
 import subprocess
 import dbus
 import stat
-import statvfs
 import glob
 import urllib
 from random import uniform
@@ -24,7 +23,7 @@ import cairo
 import email.utils
 import re
 import time
-from ConfigParser import ConfigParser
+import configparser
 
 from gi.repository import Vte
 from gi.repository import Gio
@@ -138,9 +137,13 @@ def _find_bundles():
                                              'activity.info'))
 
     for path in info_files:
-        fd = open(path, 'rb')
-        cp = ConfigParser()
-        cp.readfp(fd)
+        with open(path, 'r') as fd:
+            cp = configparser.ConfigParser()
+            try:
+                cp.read_file(fd)
+            except configparser.MissingSectionHeaderError as e:
+                _logger.error('Error reading %s: %s' % (path, e))
+                continue
         section = 'Activity'
         if cp.has_option(section, 'bundle_id'):
             bundle_id = cp.get(section, 'bundle_id')
@@ -360,7 +363,7 @@ def check_volume_suffix(volume_file):
         return TRAINING_DATA % volume_file[-13:]
     elif volume_file.endswith('.bin'):  # See SEP-33
         new_volume_file = volume_file[:-4] + TRAINING_SUFFIX
-        print new_volume_file
+        print (new_volume_file)
         os.rename(volume_file, new_volume_file)
         _logger.debug('return %s' % (TRAINING_DATA % new_volume_file[-13:]))
         return TRAINING_DATA % new_volume_file[-13:]
@@ -508,13 +511,13 @@ def unexpected_training_data_files(path, name):
 def is_full(path, required=_MINIMUM_SPACE):
     ''' Make sure we have some room to write our data '''
     volume_status = os.statvfs(path)
-    free_space = volume_status[statvfs.F_BSIZE] * \
-        volume_status[statvfs.F_BAVAIL]
+    free_space = volume_status.f_bsize * volume_status.f_bavail
     _logger.debug('free space: %d MB' % int(free_space / (1024 * 1024)))
     if free_space < required:
         _logger.error('free space: %d MB' % int(free_space / (1024 * 1024)))
         return True
     return False
+
 
 
 def is_writeable(path):
