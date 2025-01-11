@@ -13,8 +13,8 @@
 import os
 import shutil
 import time
-from ConfigParser import ConfigParser
 import json
+import configparser
 from gettext import gettext as _
 
 import gi
@@ -42,15 +42,16 @@ from sugar3.graphics import style
 from sugar3 import profile
 from sugar3.datastore import datastore
 
-import telepathy
+from gi.repository import TelepathyGLib as telepathy
 import dbus
 from dbus.service import signal
-from dbus.gobject_service import ExportedGObject
+from dbus.service import Object as ExportedGObject
 from sugar3.presence import presenceservice
 from sugar3.graphics.objectchooser import ObjectChooser
 
 try:
-    from sugar3.presence.wrapper import CollabWrapper
+    from sugar3.presence import presenceservice
+    from textchannelwrapper import CollabWrapper
 except ImportError:
     from textchannelwrapper import CollabWrapper
 
@@ -414,13 +415,12 @@ class ReflectActivity(activity.Activity):
     def get_activity_version(self):
         info_path = os.path.join(self.bundle_path, 'activity', 'activity.info')
         try:
-            info_file = open(info_path, 'r')
+            with open(info_path, 'r') as info_file:
+                cp = configparser.ConfigParser()
+                cp.read_file(info_file)
         except Exception as e:
             _logger.error('Could not open %s: %s' % (info_path, e))
             return 'unknown'
-
-        cp = ConfigParser()
-        cp.readfp(info_file)
 
         section = 'Activity'
 
@@ -689,6 +689,8 @@ class ReflectActivity(activity.Activity):
                 if jobject:
                     self._add_new_from_journal(jobject)
                     self.reload_data(self.reflection_data)
+        except dbus.exceptions.DBusException as e:
+            _logger.error('DBusException: %s' % e)
         finally:
             chooser.destroy()
             del chooser
