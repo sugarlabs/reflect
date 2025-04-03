@@ -716,7 +716,7 @@ class ReflectionGrid(Gtk.EventBox):
             bundle_icons = utils.get_bundle_icons()
             x = 0
             y = 1
-            for bundle_id in bundle_icons.keys():
+            for bundle_id in list(bundle_icons.keys()):
                 icon_path = bundle_icons[bundle_id]
                 if icon_path is None:
                     continue

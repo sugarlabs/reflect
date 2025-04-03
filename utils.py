@@ -16,7 +16,7 @@ import subprocess
 import dbus
 import stat
 import glob
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from random import uniform
 import tempfile
 import cairo
@@ -545,7 +545,7 @@ def is_landscape():
 
 
 def get_safe_text(text):
-    return urllib.pathname2url(text.encode('ascii', 'xmlcharrefreplace'))
+    return urllib.request.pathname2url(text.encode('ascii', 'xmlcharrefreplace'))
 
 
 def get_battery_level():
@@ -1106,7 +1106,7 @@ def uitree_dump():
     try:
         return json.loads(dbus.Interface(proxy, _DBUS_SERVICE).Dump())
     except Exception as e:
-        print ('ERROR calling Dump: %s' % e)
+        print('ERROR calling Dump: %s' % e)
         # _logger.error('ERROR calling Dump: %s' % e)
     return ''
 
