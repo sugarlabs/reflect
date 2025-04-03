@@ -25,13 +25,21 @@ import re
 import time
 import configparser
 
+
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gio', '2.0')
+gi.require_version('Vte', '2.91')
+gi.require_version('Wnck', '3.0')
+gi.require_version('SugarExt', '1.0')
+
 from gi.repository import Vte
 from gi.repository import Gio
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 from gi.repository import Gtk
 from gi.repository import GLib
-from gi.repository import GConf
+from gi.repository import Gio
 from gi.repository import GObject
 
 from sugar3 import env
@@ -559,8 +567,8 @@ def get_battery_level():
 
 
 def get_sound_level():
-    client = GConf.Client.get_default()
-    return client.get_int('/desktop/sugar/sound/volume')
+    settings = Gio.Settings.new('org.sugar.desktop')
+    return settings.get_int('sound-volume')
 
 
 def is_clipboard_text_available():
@@ -986,8 +994,8 @@ def get_launch_count(activity):
 
 
 def get_colors():
-    client = GConf.Client.get_default()
-    return XoColor(client.get_string('/desktop/sugar/user/color'))
+    settings = Gio.Settings.new('org.sugar.desktop')
+    return XoColor(settings.get_string('user-color'))
 
 
 def get_nick():
@@ -1153,12 +1161,12 @@ def find_string(path, string):
 
 class DeviceModel(GObject.GObject):
     __gproperties__ = {
-        'level': (int, None, None, 0, 100, 0, GObject.PARAM_READABLE),
+        'level': (int, None, None, 0, 100, 0, GObject.ParamFlags.READABLE),
         'time-remaining': (int, None, None, 0, GLib.MAXINT32, 0,
-                           GObject.PARAM_READABLE),  # unit: seconds
-        'charging': (bool, None, None, False, GObject.PARAM_READABLE),
-        'discharging': (bool, None, None, False, GObject.PARAM_READABLE),
-        'present': (bool, None, None, False, GObject.PARAM_READABLE),
+                           GObject.ParamFlags.READABLE),  # unit: seconds
+        'charging': (bool, None, None, False, GObject.ParamFlags.READABLE),
+        'discharging': (bool, None, None, False, GObject.ParamFlags.READABLE),
+        'present': (bool, None, None, False, GObject.ParamFlags.READABLE),
     }
 
     __gsignals__ = {
